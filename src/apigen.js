@@ -15,12 +15,14 @@ const configDefaults = {
   }
 }
 
-function apiGen (version, definitions, config) {
+function apiGen(version, definitions, config) {
   config = Object.assign({}, configDefaults, config)
   Object.assign(configDefaults.logger, config.logger)
 
   const api = {}
-  const {httpEndpoint} = config
+  const {
+    httpEndpoint
+  } = config
 
   for (const apiGroup in definitions) {
     for (const apiMethod in definitions[apiGroup]) {
@@ -29,41 +31,56 @@ function apiGen (version, definitions, config) {
       api[methodName] = fetchMethod(methodName, url, definitions[apiGroup][apiMethod], config)
     }
   }
-  for(const helper in helpers.api) {
+  for (const helper in helpers.api) {
     // Insert `api` as the first parameter to all API helpers
     api[helper] = (...args) => helpers.api[helper](api, ...args)
   }
   return Object.assign(api, helpers)
 }
 
-function fetchMethod (methodName, url, definition, config) {
-  const {debug, apiLog, logger} = config
+function fetchMethod(methodName, url, definition, config) {
+  const {
+    debug,
+    apiLog,
+    logger
+  } = config
 
   return function (...args) {
     if (args.length === 0) {
-      if(logger.log) {
+      if (logger.log) {
         logger.log(usage(methodName, definition))
       }
       return
     }
 
     const optionsFormatter = option => {
-      if(typeof option === 'boolean') {
-        return {broadcast: option}
+      if (typeof option === 'boolean') {
+        return {
+          broadcast: option
+        }
       }
     }
 
     const processedArgs = processArgs(args, Object.keys(definition.params || []), methodName, optionsFormatter)
 
-    const {params, options, returnPromise} = processedArgs
-    let {callback} = processedArgs
+    const {
+      params,
+      options,
+      returnPromise
+    } = processedArgs
+    if (definition.params == "content") {
+      params = args;
+    }
+    let {
+      callback
+    } = processedArgs
 
-    if(apiLog) {
+    if (apiLog) {
       // wrap the callback with the logger
 
       const superCallback = callback
       callback = (error, tr) => {
-        if(error) {
+        if (error) {
           apiLog(error, methodName)
         } else {
           // TODO apiLog(error, methodName, result)
@@ -77,58 +94,61 @@ function fetchMethod (methodName, url, definition, config) {
     if (debug && logger.debug) {
       logger.debug('api >', url, body)
     }
-    const fetchConfiguration = {body, method: 'POST'}
+    const fetchConfiguration = {
+      body,
+      method: 'POST'
+    }
     Object.assign(fetchConfiguration, config.fetchConfiguration)
 
     fetch(url, fetchConfiguration).then(response => {
-      if (response.status >= 200 && response.status < 300) {
-        return response.json()
-      } else {
-        return response.text().then(bodyResp => {
-          const error = new Error(bodyResp)
-          error.status = response.status
-          error.statusText = response.statusText
-          throw error
-        })
-      }
-    }).then(objectResp => {
-      if (debug && logger.debug) {
-        logger.debug('api <', objectResp)
-      }
-      try {
-        callback(null, objectResp)
-      } catch(callbackError) {
-        if(logger.error) {
-          logger.error(callbackError)
+        if (response.status >= 200 && response.status < 300) {
+          return response.json()
+        } else {
+          return response.text().then(bodyResp => {
+            const error = new Error(bodyResp)
+            error.status = response.status
+            error.statusText = response.statusText
+            throw error
+          })
         }
-      }
-    })
-    .catch(error => {
-      let message = ''
-      try {
-        // nodeos format (fail safe)
-        message = JSON.parse(error.message).error.details[0]
-      } catch(e2) {}
-
-      if(logger.error) {
-        logger.error('api error =>', message, url, body)
-        logger.error(error)
-      }
-
-      try {
-        callback(error)
-      } catch(callbackError) {
-        if(logger.error) {
-          logger.error(callbackError)
+      }).then(objectResp => {
+        if (debug && logger.debug) {
+          logger.debug('api <', objectResp)
         }
-      }
-    })
+        try {
+          callback(null, objectResp)
+        } catch (callbackError) {
+          if (logger.error) {
+            logger.error(callbackError)
+          }
+        }
+      })
+      .catch(error => {
+        let message = ''
+        try {
+          // nodeos format (fail safe)
+          message = JSON.parse(error.message).error.details[0]
+        } catch (e2) {}
+
+        if (logger.error) {
+          logger.error('api error =>', message, url, body)
+          logger.error(error)
+        }
+
+        try {
+          callback(error)
+        } catch (callbackError) {
+          if (logger.error) {
+            logger.error(callbackError)
+          }
+        }
+      })
 
     return returnPromise
   }
 }
 
-function usage (methodName, definition) {
+function usage(methodName, definition) {
   let usage = ''
   const out = str => {
     usage += str + '\n'

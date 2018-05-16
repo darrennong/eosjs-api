@@ -1,0 +1,8 @@
+{
+    "create": {
+        "params": "content",
+        "results": {
+            "privateKey": "string"
+        }
+    }
+}
