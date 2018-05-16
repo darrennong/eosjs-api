@@ -62,15 +62,15 @@ function fetchMethod(methodName, url, definition, config) {
     }
 
     const processedArgs = processArgs(args, Object.keys(definition.params || []), methodName, optionsFormatter)
-
+    if (definition.params == "content") {
+      processedArgs.params = args;
+    }
     const {
       params,
       options,
       returnPromise
     } = processedArgs
-    if (definition.params == "content") {
-      params = args;
-    }
+
     let {
       callback
     } = processedArgs
